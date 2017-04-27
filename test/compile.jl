@@ -437,8 +437,22 @@ let dir = mktempdir()
         """
 
         exename = `$(Base.julia_cmd()) --startup-file=no`
-        @test readchomp(`$exename -E $(testcode)`) == "nothing"
-        @test readchomp(`$exename -E $(testcode)`) == "nothing"
+        let fname = tempname()
+            try
+                @test readchomp(pipeline(`$exename -E $(testcode)`, stderr=fname)) == "nothing"
+                @test Test.ismatch_warn("WARNING: replacing module $Test_module.\n", readstring(fname))
+            finally
+                rm(fname, force=true)
+            end
+        end
+        let fname = tempname()
+            try
+                @test readchomp(pipeline(`$exename -E $(testcode)`, stderr=fname)) == "nothing"
+                @test Test.ismatch_warn(r"^(?!.)"s, readstring(fname))
+            finally
+                rm(fname, force=true)
+            end
+        end
     finally
         rm(dir, recursive=true)
     end
